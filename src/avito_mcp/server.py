@@ -521,5 +521,19 @@ async def avito_save_images(urls: list[str], dest_dir: str, prefix: str = "") ->
     return {"saved": saved, "failed": failed}
 
 
+@mcp.tool()
+async def avito_close_browser() -> dict:
+    """Закрывает окно Chrome Авито, когда работа закончена, и запускает хук «после простоя»
+    (на сервере он возвращает ресурсы другим сервисам). Следующий вызов любого инструмента откроет Chrome снова."""
+    async with browser.lock:
+        closed = await browser.close()
+    return {"closed": closed}
+
+
 def main() -> None:
-    mcp.run()
+    if config.transport == "stdio":
+        mcp.run()
+        return
+    mcp.settings.host = config.http_host
+    mcp.settings.port = config.http_port
+    mcp.run(transport=config.transport)

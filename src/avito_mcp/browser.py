@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import random
 import re
 import subprocess
@@ -30,6 +31,9 @@ BLOCK_MARKERS = (
     "Похоже, вы робот",
 )
 LOGGED_OUT_MARKERS = ("Вход и регистрация",)
+
+
+log = logging.getLogger("avito_mcp")
 
 
 class AvitoError(RuntimeError):
@@ -62,6 +66,8 @@ class AvitoBrowser:
         self._browser: Browser | None = None
         self._page: Page | None = None
         self._last_nav = 0.0
+        self._last_use = time.monotonic()
+        self._idle_task: asyncio.Task | None = None
         self.lock = asyncio.Lock()
 
     # --- Chrome process -------------------------------------------------
@@ -86,6 +92,7 @@ class AvitoBrowser:
                 "--remote-debugging-address=127.0.0.1",
                 "--no-first-run",
                 "--no-default-browser-check",
+                *self.config.chrome_args,
                 AVITO_ORIGIN + "/",
             ],
             stdout=subprocess.DEVNULL,
@@ -93,8 +100,22 @@ class AvitoBrowser:
             start_new_session=True,
         )
 
+    async def _run_hook(self, cmd: str, name: str) -> None:
+        if not cmd:
+            return
+        proc = await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE)
+        try:
+            _, err = await asyncio.wait_for(proc.communicate(), timeout=120)
+        except TimeoutError:
+            proc.kill()
+            log.warning("hook %s timed out", name)
+            return
+        if proc.returncode:
+            log.warning("hook %s exited %s: %s", name, proc.returncode, err.decode(errors="replace")[:300])
+
     async def _connect(self) -> None:
         if not self._cdp_alive():
+            await self._run_hook(self.config.before_start_cmd, "before_start")
             self._launch_chrome()
             deadline = time.monotonic() + 30
             while not self._cdp_alive():
@@ -107,8 +128,49 @@ class AvitoBrowser:
         if self._pw is None:
             self._pw = await async_playwright().start()
         self._browser = await self._pw.chromium.connect_over_cdp(self.config.cdp_url)
+        if self.config.idle_seconds > 0 and (self._idle_task is None or self._idle_task.done()):
+            self._idle_task = asyncio.create_task(self._idle_watch())
+
+    async def close(self, run_hook: bool = True) -> bool:
+        """Close Chrome (and run the after-idle hook). Returns False if it was not running."""
+        was_running = self._cdp_alive()
+        if was_running:
+            try:
+                if self._browser is None or not self._browser.is_connected():
+                    await self._connect_only()
+                assert self._browser is not None
+                cdp = await self._browser.new_browser_cdp_session()
+                await cdp.send("Browser.close")
+            except Exception as exc:
+                log.warning("closing Chrome failed: %s", exc)
+            for _ in range(40):
+                if not self._cdp_alive():
+                    break
+                await asyncio.sleep(0.25)
+        self._browser = None
+        self._page = None
+        if was_running and run_hook:
+            await self._run_hook(self.config.after_idle_cmd, "after_idle")
+        return was_running
+
+    async def _connect_only(self) -> None:
+        if self._pw is None:
+            self._pw = await async_playwright().start()
+        self._browser = await self._pw.chromium.connect_over_cdp(self.config.cdp_url)
+
+    async def _idle_watch(self) -> None:
+        while True:
+            await asyncio.sleep(min(60, self.config.idle_seconds))
+            if time.monotonic() - self._last_use < self.config.idle_seconds:
+                continue
+            async with self.lock:
+                if time.monotonic() - self._last_use >= self.config.idle_seconds and self._cdp_alive():
+                    log.info("idle for %ss, closing Chrome", self.config.idle_seconds)
+                    await self.close()
+                    return
 
     async def page(self) -> Page:
+        self._last_use = time.monotonic()
         if self._page is not None and not self._page.is_closed() and self._browser and self._browser.is_connected():
             return self._page
         if self._browser is None or not self._browser.is_connected():

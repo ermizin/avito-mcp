@@ -20,6 +20,13 @@ class Config:
     cdp_port: int
     min_nav_interval: float
     shots_dir: Path
+    chrome_args: tuple[str, ...]
+    before_start_cmd: str
+    after_idle_cmd: str
+    idle_seconds: int
+    transport: str
+    http_host: str
+    http_port: int
 
     @property
     def cdp_url(self) -> str:
@@ -38,4 +45,13 @@ def load_config() -> Config:
         cdp_port=int(os.environ.get("AVITO_MCP_PORT", "9333")),
         min_nav_interval=float(os.environ.get("AVITO_MCP_MIN_INTERVAL", "2.5")),
         shots_dir=home / "screenshots",
+        # extra Chrome flags, e.g. "--disable-dev-shm-usage --disable-gpu" on a headless Linux server
+        chrome_args=tuple(os.environ.get("AVITO_MCP_CHROME_ARGS", "").split()),
+        # shell hooks: run before Chrome is launched / after it was closed for inactivity
+        before_start_cmd=os.environ.get("AVITO_MCP_BEFORE_START", ""),
+        after_idle_cmd=os.environ.get("AVITO_MCP_AFTER_IDLE", ""),
+        idle_seconds=int(os.environ.get("AVITO_MCP_IDLE_SECONDS", "0")),
+        transport=os.environ.get("AVITO_MCP_TRANSPORT", "stdio"),
+        http_host=os.environ.get("AVITO_MCP_HTTP_HOST", "127.0.0.1"),
+        http_port=int(os.environ.get("AVITO_MCP_HTTP_PORT", "8793")),
     )
