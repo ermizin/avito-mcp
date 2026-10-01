@@ -67,7 +67,7 @@
    ├─ браузер: запуск Chrome, подключение по CDP, паузы между переходами
    ├─ извлекатели: JS по атрибутам data-marker с запасным вариантом «текст страницы»
    ├─ защита: белый список доменов, confirm=true для рискованных кнопок, детектор капчи
-   └─ инструменты: 18 штук (см. справочник)
+   └─ инструменты: 19 штук (см. справочник)
         │  CDP только на 127.0.0.1:9333
         ▼
  Google Chrome со своим профилем ~/.avito-mcp/chrome-profile  ←  вход выполняет человек
@@ -186,6 +186,7 @@ uv run --directory /ABS/PATH/avito-mcp avito-mcp
 | `avito_profiles` | — | Профили из меню аватара: номер, слот, текущий или нет, аватар |
 | `avito_switch_profile` | `index` (1 — текущий) | Переключает профиль и открывает его кабинет |
 | `avito_save_images` | `urls`, `dest_dir`, `prefix` | Скачивает фото (только с `*.avito.st`) в папку |
+| `avito_close_browser` | — | Закрывает Chrome и запускает хук `AVITO_MCP_AFTER_IDLE`; следующий вызов откроет Chrome снова |
 
 ## Безопасность
 
@@ -214,6 +215,31 @@ uv run --directory /ABS/PATH/avito-mcp avito-mcp
 | `AVITO_MCP_CHROME` | `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome` | Путь к Chrome. На Linux, например, `/usr/bin/google-chrome` |
 | `AVITO_MCP_PORT` | `9333` | Порт CDP (только loopback) |
 | `AVITO_MCP_MIN_INTERVAL` | `2.5` | Минимальная пауза между переходами, секунды |
+| `AVITO_MCP_CHROME_ARGS` | — | Дополнительные флаги Chrome, на сервере: `--disable-dev-shm-usage --disable-gpu` |
+| `AVITO_MCP_TRANSPORT` | `stdio` | `streamable-http` — для работы на сервере |
+| `AVITO_MCP_HTTP_HOST` / `AVITO_MCP_HTTP_PORT` | `127.0.0.1` / `8793` | Адрес HTTP-сервера; наружу его выставляйте только через прокси с авторизацией |
+| `AVITO_MCP_BEFORE_START` | — | Команда оболочки перед запуском Chrome (например, остановить тяжёлый сервис) |
+| `AVITO_MCP_AFTER_IDLE` | — | Команда после закрытия Chrome (например, запустить этот сервис обратно) |
+| `AVITO_MCP_IDLE_SECONDS` | `0` (выкл.) | Закрыть Chrome после стольких секунд без запросов |
+
+### Развёртывание на сервере
+
+На Linux-сервере Chrome работает на виртуальном дисплее (Xvfb). Для входа в аккаунт и капчи к дисплею подключаются через x11vnc и noVNC по SSH-туннелю. Пример юнита systemd:
+
+```ini
+[Service]
+User=ubuntu
+Environment=DISPLAY=:91
+Environment=AVITO_MCP_TRANSPORT=streamable-http
+Environment=AVITO_MCP_CHROME=/opt/google/chrome/chrome
+Environment="AVITO_MCP_CHROME_ARGS=--disable-dev-shm-usage --disable-gpu --window-size=1100,800"
+Environment="AVITO_MCP_BEFORE_START=sudo -n /usr/bin/systemctl stop game-server"
+Environment="AVITO_MCP_AFTER_IDLE=sudo -n /usr/bin/systemctl start game-server"
+Environment=AVITO_MCP_IDLE_SECONDS=900
+ExecStart=/home/ubuntu/avito-mcp/.venv/bin/python -m avito_mcp
+```
+
+Хуки нужны, если серверу не хватает ресурсов. На время работы с Авито они освобождают процессор от другого сервиса, а после простоя возвращают его. Инструмент `avito_close_browser` освобождает ресурсы сразу, не дожидаясь простоя. HTTP-порт держите на `127.0.0.1` и выставляйте наружу только через обратный прокси с OAuth или токеном: этот сервер управляет вашим аккаунтом.
 
 ## Вспомогательные скрипты
 
@@ -284,7 +310,7 @@ uvx ruff check --select E,F,B,I src    # линтер
 
 **avito-mcp** is an unofficial MCP server that lets an LLM operate [Avito](https://www.avito.ru) (Russia's largest classifieds site) the way a person would. It drives a dedicated Google Chrome window over CDP. You sign in once yourself and the session persists. No Avito API keys or paid plan are needed, and the agent doesn't need click-by-click approval.
 
-- **18 tools.** Generic ones: `open`, `read` (text or a compact snapshot with stable refs), `click`, `hover`, `type`, `replace_text`, `press`, `scroll`, `screenshot`. Avito-specific ones: search results with positions and promotion flags, full listing parsing including full-size photos and owner stats, your own listings across cabinet tabs (incl. Avito Pro), and account profile switching.
+- **19 tools.** Generic ones: `open`, `read` (text or a compact snapshot with stable refs), `click`, `hover`, `type`, `replace_text`, `press`, `scroll`, `screenshot`. Avito-specific ones: search results with positions and promotion flags, full listing parsing including full-size photos and owner stats, your own listings across cabinet tabs (incl. Avito Pro), and account profile switching.
 - **Safety built into the server:**
   - navigation is limited to avito.ru;
   - irreversible controls (send, publish, delete, pay, save…) require `confirm=true`;
