@@ -1,0 +1,39 @@
+[project]
+name = "avito-mcp"
+version = "0.1.0"
+description = "MCP server that lets an LLM work on Avito through a dedicated Chrome session"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "ermizin" }]
+keywords = ["mcp", "avito", "playwright", "llm", "claude", "agent", "browser-automation"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Topic :: Internet :: WWW/HTTP :: Browsers",
+]
+dependencies = [
+    "mcp[cli]>=1.12,<2",
+    "playwright>=1.50",
+]
+
+[project.urls]
+Homepage = "https://github.com/ermizin/avito-mcp"
+Issues = "https://github.com/ermizin/avito-mcp/issues"
+
+[project.scripts]
+avito-mcp = "avito_mcp.server:main"
+
+[build-system]
+requires = ["uv_build>=0.12.19,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
