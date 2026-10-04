@@ -67,7 +67,7 @@
    ├─ браузер: запуск Chrome, подключение по CDP, паузы между переходами
    ├─ извлекатели: JS по атрибутам data-marker с запасным вариантом «текст страницы»
    ├─ защита: белый список доменов, confirm=true для рискованных кнопок, детектор капчи
-   └─ инструменты: 19 штук (см. справочник)
+   └─ инструменты: 20 штук (см. справочник)
         │  CDP только на 127.0.0.1:9333
         ▼
  Google Chrome со своим профилем ~/.avito-mcp/chrome-profile  ←  вход выполняет человек
@@ -186,6 +186,7 @@ uv run --directory /ABS/PATH/avito-mcp avito-mcp
 | `avito_profiles` | — | Профили из меню аватара: номер, слот, текущий или нет, аватар |
 | `avito_switch_profile` | `index` (1 — текущий) | Переключает профиль и открывает его кабинет |
 | `avito_save_images` | `urls`, `dest_dir`, `prefix` | Скачивает фото (только с `*.avito.st`) в папку |
+| `avito_upload` | `paths`, `ref` | Загружает фото с диска в поле выбора файлов (например, при подаче объявления) |
 | `avito_close_browser` | — | Закрывает Chrome и запускает хук `AVITO_MCP_AFTER_IDLE`; следующий вызов откроет Chrome снова |
 
 ## Безопасность
@@ -311,7 +312,7 @@ uvx ruff check --select E,F,B,I src    # линтер
 
 **avito-mcp** is an unofficial MCP server that lets an LLM operate [Avito](https://www.avito.ru) (Russia's largest classifieds site) the way a person would. It drives a dedicated Google Chrome window over CDP. You sign in once yourself and the session persists. No Avito API keys or paid plan are needed, and the agent doesn't need click-by-click approval.
 
-- **19 tools.** Generic ones: `open`, `read` (text or a compact snapshot with stable refs), `click`, `hover`, `type`, `replace_text`, `press`, `scroll`, `screenshot`. Avito-specific ones: search results with positions and promotion flags, full listing parsing including full-size photos and owner stats, your own listings across cabinet tabs (incl. Avito Pro), and account profile switching.
+- **20 tools.** Generic ones: `open`, `read` (text or a compact snapshot with stable refs), `click`, `hover`, `type`, `replace_text`, `press`, `scroll`, `screenshot`. Avito-specific ones: search results with positions and promotion flags, full listing parsing including full-size photos and owner stats, your own listings across cabinet tabs (incl. Avito Pro), and account profile switching.
 - **Safety built into the server:**
   - navigation is limited to avito.ru;
   - irreversible controls (send, publish, delete, pay, save…) require `confirm=true`;

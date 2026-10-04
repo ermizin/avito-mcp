@@ -252,6 +252,24 @@ async def avito_replace_text(ref: str, find: str, replace: str, drop_empty_line:
 
 
 @mcp.tool()
+async def avito_upload(paths: list[str], ref: str | None = None) -> dict:
+    """Загружает фото с диска в поле выбора файлов формы (например, «Фотографии» при подаче объявления).
+    ref — поле input[file] из snapshot; без ref берётся первое такое поле на странице. Только jpg/jpeg/png/webp."""
+    files = [Path(x).expanduser() for x in paths]
+    for f in files:
+        if not f.is_file() or f.suffix.lower() not in {".jpg", ".jpeg", ".png", ".webp"}:
+            raise AvitoError(f"Не найдено или не фото: {f}")
+    async with browser.lock:
+        page = await browser.page()
+        locator = _ref_locator(page, ref) if ref else page.locator("input[type=file]")
+        if await locator.count() == 0:
+            raise AvitoError("Поле загрузки файлов не найдено")
+        await locator.first.set_input_files([str(f) for f in files])
+        await page.wait_for_timeout(1500 + 1500 * len(files))
+        return {"done": True, "uploaded": [f.name for f in files], **await _after_action(page)}
+
+
+@mcp.tool()
 async def avito_press(key: str, confirm: bool = False) -> dict:
     """Нажимает клавишу (Enter, Escape, Tab, ArrowDown, PageDown…). Enter в сообщениях — только с confirm=true."""
     async with browser.lock:
