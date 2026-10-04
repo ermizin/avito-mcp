@@ -98,7 +98,10 @@ SEARCH_CARDS_JS = r"""
       position: i + 1,
       title: tx(a),
       url: a ? new URL(a.getAttribute('href') || '', location.origin).href.split('?')[0] : '',
-      price: tx(c.querySelector('[data-marker="item-price"]')),
+      // goods cards often have no item-price node: fall back to schema.org meta, then the first "N ₽" in the text
+      price: tx(c.querySelector('[data-marker="item-price"]'))
+        || ((c.querySelector('meta[itemprop="price"]') || {}).content ? c.querySelector('meta[itemprop="price"]').content + ' ₽' : '')
+        || ((all.match(/(\d[\d\s\u00a0]*)\s?₽/) || [''])[0]).replace(/\s+/g, ' ').trim(),
       price_list: tx(c.querySelector('[data-marker="price-lists-block"]')),
       description: dm ? dm.content.slice(0, 400) : '',
       location: tx(c.querySelector('[data-marker="item-address"], [data-marker="item-location"]')),
