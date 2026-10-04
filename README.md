@@ -218,6 +218,7 @@ uv run --directory /ABS/PATH/avito-mcp avito-mcp
 | `AVITO_MCP_CHROME_ARGS` | — | Дополнительные флаги Chrome, на сервере: `--disable-dev-shm-usage --disable-gpu` |
 | `AVITO_MCP_TRANSPORT` | `stdio` | `streamable-http` — для работы на сервере |
 | `AVITO_MCP_HTTP_HOST` / `AVITO_MCP_HTTP_PORT` | `127.0.0.1` / `8793` | Адрес HTTP-сервера; наружу его выставляйте только через прокси с авторизацией |
+| `AVITO_MCP_ALLOWED_HOSTS` | — | Дополнительные значения заголовка Host через запятую (`10.0.0.1:8793`); защита от DNS rebinding остаётся включённой |
 | `AVITO_MCP_BEFORE_START` | — | Команда оболочки перед запуском Chrome (например, остановить тяжёлый сервис) |
 | `AVITO_MCP_AFTER_IDLE` | — | Команда после закрытия Chrome (например, запустить этот сервис обратно) |
 | `AVITO_MCP_IDLE_SECONDS` | `0` (выкл.) | Закрыть Chrome после стольких секунд без запросов |

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import re
 import time
 import urllib.request
@@ -536,4 +537,13 @@ def main() -> None:
         return
     mcp.settings.host = config.http_host
     mcp.settings.port = config.http_port
+    extra_hosts = [h for h in os.environ.get("AVITO_MCP_ALLOWED_HOSTS", "").split(",") if h.strip()]
+    if extra_hosts:
+        # keep DNS-rebinding protection on, just add hosts clients legitimately use (e.g. a veth address)
+        from mcp.server.transport_security import TransportSecuritySettings
+
+        hosts = [f"127.0.0.1:{config.http_port}", f"localhost:{config.http_port}", *(h.strip() for h in extra_hosts)]
+        mcp.settings.transport_security = TransportSecuritySettings(
+            enable_dns_rebinding_protection=True, allowed_hosts=hosts, allowed_origins=[f"http://{h}" for h in hosts]
+        )
     mcp.run(transport=config.transport)
