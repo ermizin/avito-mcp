@@ -39,6 +39,7 @@ BLOCK_MARKERS = (
     "Похоже, вы робот",
     "Antibot Challenge",
     "Подозрительная активность",
+    "fab_chlg",  # Ozon «Похоже, нет соединения… выключите VPN»: the IP is refused, typically a datacenter
 )
 LOGGED_OUT_MARKERS = ("Вход и регистрация",)
 
