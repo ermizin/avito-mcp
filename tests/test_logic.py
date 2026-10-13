@@ -2,7 +2,7 @@
 
 import pytest
 
-from avito_mcp.browser import AvitoError, host_allowed, normalize_url
+from avito_mcp.browser import IMAGE_HOSTS, AvitoError, host_allowed, normalize_url, site_of
 from avito_mcp.server import RISKY, _section, _snapshot_line, _text_sections
 
 
@@ -81,3 +81,28 @@ def test_text_sections_price_list_details_and_stats():
 
 def test_section_missing_returns_empty():
     assert _section(PAGE, "Отзывы", ("Описание",)) == ""
+
+
+@pytest.mark.parametrize(
+    "url, site",
+    [
+        ("https://www.avito.ru/profile", "avito"),
+        ("https://www.ozon.ru/search/?text=x", "ozon"),
+        ("https://seller.ozon.ru/app/products", "ozon"),
+        ("https://www.wildberries.ru/catalog/0/search.aspx?search=x", "wildberries"),
+        ("https://seller.wildberries.ru/", "wildberries"),
+        ("https://www.wb.ru/", "wildberries"),
+        ("https://ozon.ru.evil.com/", None),
+        ("https://notozon.ru/", None),
+    ],
+)
+def test_marketplace_sites(url, site):
+    assert site_of(url) == site
+    assert host_allowed(url) is (site is not None)
+
+
+def test_normalize_marketplace_urls():
+    assert normalize_url("ozon.ru/my/main") == "https://ozon.ru/my/main"
+    assert normalize_url("http://www.wildberries.ru/x") == "https://www.wildberries.ru/x"
+    assert host_allowed("https://basket-12.wbbasket.ru/vol1/part2/3/images/big/1.webp", IMAGE_HOSTS)
+    assert host_allowed("https://ir.ozone.ru/s3/multimedia-1/123.jpg", IMAGE_HOSTS)
